@@ -69,7 +69,7 @@ def get_loader_circuit_tape(path):
 
 def loader_circuit(params, tape):
     batched = qml.math.ndim(params) > 1
-    features = qml.math.T(params) if batched else loader_circuit
+    features = qml.math.T(params) if batched else params
     
     param_count = 0
     for op in tape:

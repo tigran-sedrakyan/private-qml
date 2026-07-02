@@ -14,18 +14,14 @@ Both use PyTorch + [Opacus](https://opacus.ai/) for DP-SGD accounting and per-ex
 ```
 .
 ├── tabular/
-│   ├── privacy_torch_heatmap.ipynb    # clip × B and clip × ε heatmap sweeps
-│   ├── privacy_torch_clipped.ipynb    # per-epoch clipping diagnostics (σ = 0)
-│   ├── privacy_torch_private.ipynb    # per-epoch MSE under DP-SGD (ε = 10)
-│   └── experiment_summaries/          # pickled run summaries consumed by the plot cells
+│   ├── heatmap.ipynb                  # clip × B and clip × ε heatmap sweeps
+│   ├── clipped.ipynb                  # per-epoch clipping diagnostics (σ = 0)
+│   ├── private.ipynb                  # per-epoch MSE under DP-SGD (ε = 10)
 └── image/
     ├── classical_model.ipynb          # SimpleCNN baseline on 64×96 gray images
     ├── lipschitz_model.ipynb          # Lipschitz baseline
     ├── quantum_model.ipynb            # BAE loader + variational classifier (hybrid, DP-SGD)
     ├── common.py                      # shared datasets, criterion, train/test loops
-    ├── loaders/
-    │   ├── 4class_2000/               # BAE qasm circuits
-    │   └── original_data_4class_2000/ # source images grouped by class
     └── results/                       # aggregated image-classifier runs
         ├── 4class_best.json           # {quantum,classical}×{private,nonprivate} best-run traces (10 seeds × 50 epochs)
         └── visualize.ipynb            # produces the accuracy / delta-L plots
@@ -39,7 +35,7 @@ The task is `sklearn.datasets.make_classification` with 16 features, 4 classes, 
 - **QuantumNet** — amplitude encoding on `⌈log₂ 16⌉ = 4` qubits, `L` layers of `RZ-RY-RZ` per qubit followed by a CNOT ring, Pauli-`Z` expectations as logits. `L` is auto-tuned so the parameter count matches the classical net.
 - **LipschitzNet** — same MLP topology built from `deel.torchlip.SpectralLinear` (k = 1) + `GroupSort2`, with the output layer absorbing a Lipschitz constant `K = C` matched to the DP-SGD clipping threshold.
 
-### `privacy_torch_heatmap.ipynb`
+### `heatmap.ipynb`
 Builds the two heatmaps:
 
 - **Heatmap 1** (clip threshold `C ∈ {0.5, 1.5, 4.5, 10.0}` × batch size `B ∈ {32, 64, 128, 512}`, `σ = 0`) — the clipping-only ablation. Isolates the effect of clipping alone by disabling the DP Gaussian noise. Reproduces the observation that `B` barely matters once the LR is tuned, but classical models collapse for `C ≤ 1.5` while quantum and Lipschitz models do not.
@@ -47,7 +43,7 @@ Builds the two heatmaps:
 
 Each cell is 10 seeds × 100 epochs, reporting mean and std of test accuracy.
 
-### `privacy_torch_clipped.ipynb`
+### `clipped.ipynb`
 Per-epoch clipping diagnostics at the `C = 1.5, B = 64` cell where classical and quantum models diverge in Heatmap 1. Same models, no DP noise. At the end of every epoch it records the pre-clipping per-example gradient tensor at the Polyak-averaged parameters (EMA of θ over the epoch), which the downstream cells convert into informative metrics:
 
 - Population and per-example gradient norms.
@@ -56,8 +52,8 @@ Per-epoch clipping diagnostics at the `C = 1.5, B = 64` cell where classical and
 
 This is where the paper's structural claim is verified empirically: at `C = 1.5` the quantum gradients stay inside the clipping ball on average and in the worst case, so the clipping probability and bias stay small, while the classical model clips heavily and its directional alignment degrades.
 
-### `privacy_torch_private.ipynb`
-Same per-epoch diagnostic pipeline as `_clipped`, but with the actual DP-SGD noise on (`ε = 10`, `δ = 10⁻⁵`, `C = 1.5`, `B = 64`). Reports the composite MSE evolution alongside test accuracy — this aggregates the clipping bias, sampling variance, and DP noise contributions per epoch. The classical model's higher MSE is what drives its lower accuracy in this regime, giving the quantum classifier the ~5% edge visible in Heatmap 2.
+### `private.ipynb`
+Same per-epoch diagnostic pipeline as `clipped.ipynb`, but with the actual DP-SGD noise on (`ε = 10`, `δ = 10⁻⁵`, `C = 1.5`, `B = 64`). Reports the composite MSE evolution alongside test accuracy — this aggregates the clipping bias, sampling variance, and DP noise contributions per epoch. The classical model's higher MSE is what drives its lower accuracy in this regime, giving the quantum classifier the ~5% edge visible in Heatmap 2.
 
 ## `image/` — Honda Scenes / BAE image-classification pipeline
 
